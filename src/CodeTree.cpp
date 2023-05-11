@@ -184,7 +184,7 @@ CodeTree::generate_cxx(std::ostream& o, std::string& odir){
     if(is_type_vetoed(t.type_name)) continue;
     if(t.methods.size() < 1) continue;
     auto type_fname = std::regex_replace(t.type_name, std::regex("::"), "_");
-    o << "void add_methods_for_" << type_fname << "(jlcxx::TypeWrapper<" << t.type_name << ">&);\n";
+    o << "void add_methods_for_" << type_fname << "(jlcxx::Module&, jlcxx::TypeWrapper<" << t.type_name << ">&);\n";
   }
   o << "/* end declare the functions */\n";
     
@@ -284,7 +284,7 @@ CodeTree::generate_cxx(std::ostream& o, std::string& odir){
     
     // Create new files for the methods for each type
 
-    indent(o, 1) << "add_methods_for_" << type_fname << "(t" << t.id << ");" << std::endl;
+    indent(o, 1) << "add_methods_for_" << type_fname << "(types, t" << t.id << ");" << std::endl;
 
     std::stringstream buf;
     buf << odir << "jl_" << type_fname << "_methods.cxx";
@@ -305,8 +305,7 @@ CodeTree::generate_cxx(std::ostream& o, std::string& odir){
     o_ <<"#define __HERE__  __FILE__ \":\" QUOTE2(__LINE__)\n"
          "#define QUOTE(arg) #arg\n"
          "#define QUOTE2(arg) QUOTE(arg)\n";
-    o_ << "void add_methods_for_" << type_fname << "(jlcxx::TypeWrapper<" << t.type_name << ">& t" << t.id << ") {\n\n";
-    o_ << "  auto module = t" << t.id << ".module();\n";
+    o_ << "void add_methods_for_" << type_fname << "(jlcxx::Module& types, jlcxx::TypeWrapper<" << t.type_name << ">& t" << t.id << ") {\n\n";
 
     if(/*t.template_parameter_combinations.size() == 0
          &&*/ clang_getCursorKind(t.cursor)!= CXCursor_ClassTemplate){
@@ -359,15 +358,13 @@ CodeTree::generate_cxx(std::ostream& o, std::string& odir){
     indent(o, 1) << " */\n";
   }
 
-  indent(o, 1) << "auto module = types;  // current module is the variable types here\n";
-
   for(const auto& f: functions_){
     generate_method_cxx(o, f);
     if(test_build_) test_build(o);
   }
 
   if(override_base_){
-    indent(o, 1) << "module.unset_override_module();\n";
+    indent(o, 1) << "types.unset_override_module();\n";
     override_base_ = false;
   }
 
@@ -620,10 +617,10 @@ CodeTree::method_cxx_decl(std::ostream& o, const MethodRcd& method,
 
   bool new_override_base = wrapper.override_base();
   if(override_base_ && !new_override_base){
-    indent(o << "\n", 1) << "module.unset_override_module();\n";
+    indent(o << "\n", 1) << "types.unset_override_module();\n";
     override_base_ = new_override_base;
   } else if(!override_base_ && new_override_base){
-    indent(o, 1) << "module.set_override_module(jl_base_module);\n";
+    indent(o, 1) << "types.set_override_module(jl_base_module);\n";
     override_base_ = new_override_base;
   }
   o << "\n";
