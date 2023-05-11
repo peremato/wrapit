@@ -120,7 +120,7 @@ namespace codetree{
 
     bool fromMainFiles(const CXCursor& cursor) const;
 
-    std::ostream& generate_cxx(std::ostream&);
+    std::ostream& generate_cxx(std::ostream&, std::string&);
 
     std::ostream& generate_enum_cxx(std::ostream& o, CXCursor cursor);
 

@@ -1,5 +1,5 @@
 module_name         = "Hello"
-
+out_cpp_fname       = "cpp/jlHello.cxx"
 input               = [ "A.h" ] 
 
 include_dirs        = [ "." ]

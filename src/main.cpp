@@ -141,6 +141,8 @@ int main(int argc, char* argv[]){
 
     auto lib_basename     = std::string("jl") + module_name;
     auto out_cpp_fname    = toml_config["out_cpp_fname"].value_or(std::string("jl") + module_name + ".cxx");
+    auto last_slash = out_cpp_fname.rfind('/');
+    auto out_cpp_dir      = last_slash != std::string::npos ? out_cpp_fname.substr(0, last_slash+1) : "";
     auto out_h_fname      = toml_config["out_h_fname"].value_or(std::string("jl") + module_name + ".h");
     auto out_report_fname = std::string("jl") + module_name + "-report.txt";
 
@@ -317,7 +319,8 @@ int main(int argc, char* argv[]){
 
     tree.parse(out_h, out_h_fname);
     tree.preprocess();
-    tree.generate_cxx(out_cpp);
+    std::cout << "=====>[" << out_cpp_dir << "]" << std::endl;
+    tree.generate_cxx(out_cpp, out_cpp_dir);
     tree.generate_jl(out_jl, out_export_jl, module_name, lib_basename);
 
     tree.report(out_report);

@@ -6,12 +6,14 @@ LDFLAGS  += $(shell $(JL_SHARE)/julia-config.jl --ldflags)
 LDLIBS   += $(shell $(JL_SHARE)/julia-config.jl --ldlibs)
 
 CXXWRAP_CPPFLAGS=-I $(shell julia -e 'using CxxWrap; print(CxxWrap.prefix_path() * "/include")') -std=c++17
+CXXWRAP_LDFLAGS=-L $(shell julia -e 'using CxxWrap; print(CxxWrap.prefix_path() * "/lib")') -lcxxwrap_julia -lcxxwrap_julia_stl
 
-CXXFLAGS += -Wno-unused-variable -Wno-unused-but-set-variable -fmax-errors=3
+#CXXFLAGS += -Wno-unused-variable -Wno-unused-but-set-variable -fmax-errors=3
 
 CPPFLAGS += -MMD
 
 LINK.o = $(CXX) $(LDFLAGS) $(TARGET_ARCH)
+MODULE_NAME=Hello
 
 CC_FILES=jlHello.cxx
 
@@ -19,27 +21,33 @@ CC_FILES=jlHello.cxx
 
 .PRECIOUS: $(CC_FILES)
 
-PRODUCTS=jlHello.so jlHello.cxx jlHello.h Hello.jl
+SOURCES = jlHello.cxx jl_NS_A_methods.cxx jl_NS_B_methods.cxx jl_NS_C_methods.cxx
+OBJS = $(addsuffix .o, $(basename $(SOURCES)))
+DEPS = $(addsuffix .d, $(basename $(SOURCES)))
+
+PRODUCTS = jl$(MODULE_NAME).dylib
 
 all: $(PRODUCTS)
 
 clean:
-	-$(RM) $(PRODUCTS) jlHello.d jlHello.o jlHello-report.txt
+	-$(RM) $(PRODUCTS) $(OBJS) $(DEPS)
 
 jl%.cxx: %.wit
+	wrapit --force $<
+
+$(SOURCES): Hello.wit
 	wrapit --force $<
 
 %.o: %.cxx
 	$(COMPILE.cc) $(CXXWRAP_CPPFLAGS) -o $@ $<
 
-
-jl%.so: jl%.o
-	$(LINK.o) -o $@ --shared -fPIC $< $(ROOT_LIBS)
+jl%.dylib: $(OBJS)
+	$(LINK.o) -o $@ --shared -fPIC $(LDFLAGS) $(LDLIBS) $(CXXWRAP_LDFLAGS) $^
+	touch $(MODULE_NAME).jl
 
 echo_%:
 	@echo $*=$($*)
 
 run_demo: all
-	. ./setup.sh && julia demo_Hello.jl
+	source ./setup.sh && julia demo_$(MODULE_NAME).jl
 
--include $(addsuffix .d, $(basename $(CC_FILES)))
