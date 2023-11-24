@@ -139,13 +139,13 @@ int main(int argc, char* argv[]){
     auto clang_features = read_vstring("clang_features");
     auto clang_opts     = read_vstring("clang_opts");
 
-    auto lib_basename     = std::string("jl") + module_name;
-    auto out_cpp_fname    = toml_config["out_cpp_fname"].value_or(std::string("jl") + module_name + ".cxx");
-    auto last_slash = out_cpp_fname.rfind('/');
-    auto out_cpp_dir      = last_slash != std::string::npos ? out_cpp_fname.substr(0, last_slash+1) : "";
-    auto out_h_fname      = toml_config["out_h_fname"].value_or(std::string("jl") + module_name + ".h");
-    auto out_report_fname = std::string("jl") + module_name + "-report.txt";
-
+    auto lib_basename       = toml_config["lib_basename"].value_or(std::string("libjl") + module_name);
+    auto out_cxx_dir        = toml_config["out_cxx_dir"].value_or(join_paths("lib" + module_name, std::string("src")));
+    auto out_jl_dir         = toml_config["out_jl_dir"].value_or(join_paths(module_name, std::string("src")));
+    auto n_classes_per_file = toml_config["n_classes_per_file"].value_or(-1);
+    auto out_report_fname   = std::string("jl") + module_name + "-report.txt";
+    auto out_cpp_fname      = toml_config["out_cpp_fname"].value_or(std::string("jl") + module_name + ".cxx");
+    auto out_h_fname        = toml_config["out_h_fname"].value_or(std::string("jl") + module_name + ".h");
 
     auto veto_list = toml_config["veto_list"].value_or(""sv);
 
@@ -212,6 +212,7 @@ int main(int argc, char* argv[]){
     //      std::cerr << "File " << out_cpp_fname << " is on way, please move it or use the --force option to force its deletion.\n";
     //      in_err = true;
     //    }
+    out_cpp_fname = join_paths(out_cxx_dir, out_cpp_fname);
     auto out_cpp = open_file(out_cpp_fname);
 
     //    std::ofstream out_h(out_h_fname, open_mode );
@@ -219,6 +220,7 @@ int main(int argc, char* argv[]){
     //      std::cerr << "File " << out_h_fname << " is on way, please move it or use the --force option to force its deletion.\n";
     //      in_err = true;
     //    }
+    out_h_fname = join_paths(out_cxx_dir, out_h_fname);
     auto out_h = open_file(out_h_fname);
 
     //    std::ofstream out_jl(out_jl_fname, open_mode);
@@ -226,7 +228,7 @@ int main(int argc, char* argv[]){
     //      std::cerr << "File " << out_jl_fname << " is on way, please move it or use the --force option to force its deletion.\n";
     //      in_err = true;
     //    }
-    auto out_jl = open_file(out_jl_fname);
+    auto out_jl = open_file(join_paths(out_jl_dir, out_jl_fname));
 
     //    std::ofstream out_export_jl(out_export_jl_fname, open_mode);
     //    if(out_export_jl.tellp()!=0){
@@ -237,7 +239,7 @@ int main(int argc, char* argv[]){
     bool same_ = true;
     if(out_export_jl_fname.size() > 0){
       same_ = false;
-      out_export_jl_ = std::move(open_file(out_export_jl_fname));
+      out_export_jl_ = std::move(open_file(join_paths(out_jl_dir, out_export_jl_fname)));
     }
     auto& out_export_jl = same_ ? out_jl : out_export_jl_;
 
@@ -319,8 +321,7 @@ int main(int argc, char* argv[]){
 
     tree.parse(out_h, out_h_fname);
     tree.preprocess();
-    std::cout << "=====>[" << out_cpp_dir << "]" << std::endl;
-    tree.generate_cxx(out_cpp, out_cpp_dir);
+    tree.generate_cxx(out_cpp, out_cxx_dir);
     tree.generate_jl(out_jl, out_export_jl, module_name, lib_basename);
 
     tree.report(out_report);
